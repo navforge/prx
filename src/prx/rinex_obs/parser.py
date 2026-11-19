@@ -71,32 +71,6 @@ def get_glonass_slot(file_path):
     return {int(prn_slot[:2]): int(prn_slot[2:]) for prn_slot in lines.split("R")[1:]}
 
 
-def get_obs_type_mapping(obs_types):
-    # Maps (constellation, column of the record) to the observation type stored in that column
-    mapping = []
-    for constellation, content in obs_types.items():
-        for i, obs_type in enumerate(content["obs_types"]):
-            mapping.append(
-                {
-                    "constellation": constellation,
-                    "column": f"obs_{i}",
-                    "obs_type": obs_type,
-                }
-            )
-            if obs_type[0] == "L":
-                mapping.append(
-                    {
-                        "constellation": constellation,
-                        "column": f"lli_{i}",
-                        "obs_type": obs_type + "lli",
-                    }
-                )
-    return pl.DataFrame(
-        mapping,
-        schema={"constellation": pl.String, "column": pl.String, "obs_type": pl.String},
-    )
-
-
 def parse(file_path):
     df = read_lines(file_path)
     i_end_of_header = df.filter(
@@ -104,7 +78,6 @@ def parse(file_path):
     )["i"][0]
     header = df.filter(pl.col("i") < i_end_of_header)
     obs_types = get_obs_types(header)
-    n_columns = max(len(content["obs_types"]) for content in obs_types.values())
 
     def obs_start(i):
         return sat_prefix_length + i * block_length
@@ -130,38 +103,49 @@ def parse(file_path):
             .cast(pl.Int64),
         )
         .filter(~is_timestamp & (pl.col("epoch_flag") <= 1))
-        .select(
-            "time",
-            sv=pl.col("lines").str.slice(0, sat_prefix_length),
-            *[
-                pl.col("lines")
-                .str.slice(obs_start(i), obs_length)
-                .str.strip_chars()
-                .replace("", None)
-                .cast(pl.Float64)
-                .alias(f"obs_{i}")
-                for i in range(n_columns)
-            ],
-            # retrieve loss of lock indicator
-            *[
-                pl.col("lines")
-                .str.slice(obs_start(i) + obs_length, 1)
-                .str.strip_chars()
-                .replace("", "0")
-                .cast(pl.Int64)
-                .cast(pl.Float64)
-                .alias(f"lli_{i}")
-                for i in range(n_columns)
-            ],
-        )
+        .select("time", "lines", sv=pl.col("lines").str.slice(0, sat_prefix_length))
+        .collect()
     )
-    result = (
-        records.unpivot(
-            index=["time", "sv"], variable_name="column", value_name="obs_value"
+
+    group_dfs = []
+    for constellation, content in obs_types.items():
+        types = content["obs_types"]
+        group_df = (
+            records.lazy()
+            .filter(pl.col("sv").str.starts_with(constellation))
+            .select(
+                "time",
+                "sv",
+                *[
+                    pl.col("lines")
+                    .str.slice(obs_start(i), obs_length)
+                    .str.strip_chars()
+                    .replace("", None)
+                    .cast(pl.Float64)
+                    .alias(type)
+                    for i, type in enumerate(types)
+                ],
+                # retrieve loss of lock indicator
+                *[
+                    pl.col("lines")
+                    .str.slice(obs_start(i) + obs_length, 1)
+                    .str.strip_chars()
+                    .replace("", "0")
+                    .cast(pl.Int64)
+                    .cast(pl.Float64)
+                    .alias(type + "lli")
+                    for i, type in enumerate(types)
+                    if type[0] == "L"
+                ],
+            )
+            .unpivot(
+                index=["time", "sv"], variable_name="obs_type", value_name="obs_value"
+            )
+            .filter(pl.col("obs_value").is_not_null())
         )
-        .with_columns(constellation=pl.col("sv").str.slice(0, 1))
-        .join(get_obs_type_mapping(obs_types).lazy(), on=["constellation", "column"])
-        .filter(pl.col("obs_value").is_not_null())
+        group_dfs.append(group_df)
+    result = (
+        pl.concat(group_dfs)
         .select("time", "sv", "obs_value", "obs_type")
         .sort("time", maintain_order=True)
         .collect()
