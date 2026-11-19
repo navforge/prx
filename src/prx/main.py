@@ -235,7 +235,7 @@ def build_records_levels_12(
         approximate_receiver_ecef_position_m
     )
     check_assumptions(rinex_3_obs_file)
-    flat_obs = pl.from_pandas(parse_rinex_obs_file(rinex_3_obs_file))
+    flat_obs = parse_rinex_obs_file(rinex_3_obs_file)
 
     flat_obs = flat_obs.rename(
         {
@@ -449,7 +449,7 @@ def build_records_level_3(
         approximate_receiver_ecef_position_m
     )
     check_assumptions(rinex_3_obs_file)
-    flat_obs = parse_rinex_obs_file(rinex_3_obs_file)
+    flat_obs = parse_rinex_obs_file(rinex_3_obs_file).to_pandas()
 
     flat_obs.time = pd.to_datetime(flat_obs.time, format="%Y-%m-%dT%H:%M:%S")
     flat_obs.obs_value = flat_obs.obs_value.astype(float)

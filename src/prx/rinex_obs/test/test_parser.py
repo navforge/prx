@@ -39,7 +39,9 @@ def test_compare_to_georinex():
         / "TLSE00FRA_R_20220010000_01D_30S_MO.rnx_slice_0.24h.rnx.gz"
     )
     try_repair_with_gfzrnx(file)
-    prx_output = prx_obs_parse(file).sort_values(by=["time", "sv", "obs_type"])
+    prx_output = (
+        prx_obs_parse(file).to_pandas().sort_values(by=["time", "sv", "obs_type"])
+    )
     # remove lli from prx outputs
     drop_lli = [
         obs_type for obs_type in prx_output.obs_type.unique() if "lli" in obs_type
@@ -64,6 +66,7 @@ def test_compare_to_georinex_with_lli():
     try_repair_with_gfzrnx(file)
     prx_output = (
         prx_obs_parse(file)
+        .to_pandas()
         .sort_values(by=["time", "sv", "obs_type"])
         .reset_index(drop=True)
     )
@@ -123,7 +126,7 @@ def test_compare_to_georinex_with_lli():
 def test_basic_check_on_rinex(input_for_test_tlse):
     file = converters.anything_to_rinex_3(input_for_test_tlse)
     try_repair_with_gfzrnx(file)
-    prx_output = prx_obs_parse(file)
+    prx_output = prx_obs_parse(file).to_pandas()
     test_cases = [
         # (timestamp, svid, obs_type, expected_value)
         (

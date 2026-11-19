@@ -16,7 +16,7 @@ def generate_inputs(
     n_steps: int = 10, root: Path = None, obs_file: Path = None
 ) -> list[dict]:
     if root is None:
-        root = Path(__file__).parent / "benchmark_datasets"
+        root = Path(__file__).parent
     root.mkdir(exist_ok=True, parents=True)
     if obs_file is None:
         obs_file = converters.anything_to_rinex_3(

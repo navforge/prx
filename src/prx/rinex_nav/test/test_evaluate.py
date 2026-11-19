@@ -774,7 +774,7 @@ def test_compute_health_flag(input_for_test_2):
     Comprehensive test of health_flag extraction via the compute function
     """
     rinex_3_obs_file = converters.anything_to_rinex_3(input_for_test_2["obs"])
-    query = parse_rinex_obs_file(rinex_3_obs_file)[["time", "sv", "obs_type"]]
+    query = parse_rinex_obs_file(rinex_3_obs_file).to_pandas()[["time", "sv", "obs_type"]]
     query.time = pd.to_datetime(query.time, format="%Y-%m-%dT%H:%M:%S")
     query.obs_type = query.obs_type.str[1:]
     query = query.loc[~query.obs_type.str.contains("lli")].reset_index(drop=True)

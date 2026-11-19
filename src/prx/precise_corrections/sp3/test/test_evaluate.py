@@ -271,7 +271,7 @@ def test_compare_matrtklib_com(input_for_test_rtklib_no_pco):
     """
     flat_obs = parse_rinex_obs_file(
         anything_to_rinex_3(input_for_test_rtklib_no_pco["obs"])
-    )
+    ).to_pandas()
     query = build_query(
         flat_obs, {"G": ["C1C"], "C": ["C2I"], "R": ["C1C"], "E": ["C1X"]}
     )
@@ -334,7 +334,9 @@ def test_compare_matrtklib_gps_glo(input_for_test_rtklib):
     """
     Compare antenna phase center position between rtklib and prx, taking into account phase center offset from ATX file
     """
-    flat_obs = parse_rinex_obs_file(anything_to_rinex_3(input_for_test_rtklib["obs"]))
+    flat_obs = parse_rinex_obs_file(
+        anything_to_rinex_3(input_for_test_rtklib["obs"])
+    ).to_pandas()
     query = build_query(flat_obs, {"G": ["C1C"], "R": ["C1C"]})
 
     # TODO: investigate why G14 has large difference
