@@ -14,23 +14,22 @@ from prx.util import timeit, try_repair_with_gfzrnx, timedelta_2_seconds
 log = logging.getLogger(__name__)
 
 
+@lru_cache
+@util.disk_cache.cache(ignore=["rinex_file_path"])
+def cached_load(rinex_file_path: Path, file_hash: str):
+    try_repair_with_gfzrnx(rinex_file_path)
+    ds = georinex.load(rinex_file_path)
+    ds.attrs["utc_gpst_leap_seconds"] = util.get_gpst_utc_leap_seconds(
+        rinex_file_path
+    )
+    df = convert_nav_dataset_to_dataframe(ds)
+    df["source"] = str(rinex_file_path.resolve())
+    df["ephemeris_hash"] = pd.util.hash_pandas_object(df, index=False).astype(str)
+    return df
+
 @timeit
 def parse_rinex_nav_file(rinex_file: Path):
-    @lru_cache
-    @util.disk_cache.cache(ignore=["rinex_file_path"])
-    def cached_load(rinex_file_path: Path, file_hash: str):
-        try_repair_with_gfzrnx(rinex_file)
-        ds = georinex.load(rinex_file)
-        ds.attrs["utc_gpst_leap_seconds"] = util.get_gpst_utc_leap_seconds(
-            rinex_file_path
-        )
-        df = convert_nav_dataset_to_dataframe(ds)
-        df["source"] = str(rinex_file_path.resolve())
-        df["ephemeris_hash"] = pd.util.hash_pandas_object(df, index=False).astype(str)
-        return df
-
     t0 = pd.Timestamp.now()
-
     file_content_hash = util.hash_of_file_content(rinex_file)
     hash_time = pd.Timestamp.now() - t0
     if hash_time > pd.Timedelta(seconds=1):
