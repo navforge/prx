@@ -15,7 +15,6 @@ log = logging.getLogger(__name__)
 
 
 @lru_cache
-@util.disk_cache.cache(ignore=["rinex_file_path"])
 def cached_load(rinex_file_path: Path, file_hash: str):
     try_repair_with_gfzrnx(rinex_file_path)
     ds = georinex.load(rinex_file_path)
@@ -643,7 +642,7 @@ def compute_parallel(
     rinex_nav_file_path,
     per_signal_query,
     is_query_corrected_by_sat_clock_offset=False,
-    joblib_backend: str = "loky",
+    joblib_backend: str = "threading",
 ):
     # Warm up nav file parser cache so that we don't parse the file multiple times
     _ = parse_rinex_nav_file(rinex_nav_file_path)
