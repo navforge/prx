@@ -78,4 +78,6 @@ if __name__ == "__main__":
     print(
         f"Approximate ephemeris evaluation speed: {len(query.query_time_isagpst.unique()) / t_eval_s} epochs/s"
     )
-    print(f"To inspect profiling results, call \n snakeviz {stats_file}")
+    csv_file = Path(__file__).parent / "benchmark.csv"
+    df.to_csv(csv_file, index=False)
+    print(f"To inspect profiling results, call \n snakeviz {stats_file} or check out {csv_file}")

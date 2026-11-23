@@ -10,18 +10,19 @@ import georinex
 from prx import util
 from prx import constants
 from prx.util import timeit, try_repair_with_gfzrnx, timedelta_2_seconds
-
+from prx.rinex_nav  import parser
 log = logging.getLogger(__name__)
 
 
 @lru_cache
 def cached_load(rinex_file_path: Path, file_hash: str):
     try_repair_with_gfzrnx(rinex_file_path)
-    ds = georinex.load(rinex_file_path)
-    ds.attrs["utc_gpst_leap_seconds"] = util.get_gpst_utc_leap_seconds(
-        rinex_file_path
-    )
-    df = convert_nav_dataset_to_dataframe(ds)
+    df = parser.parse(rinex_file_path)
+    #ds = georinex.load(rinex_file_path)
+    #ds.attrs["utc_gpst_leap_seconds"] = util.get_gpst_utc_leap_seconds(
+    #    rinex_file_path
+    #)
+    #df = convert_nav_dataset_to_dataframe(ds)
     df["source"] = str(rinex_file_path.resolve())
     df["ephemeris_hash"] = pd.util.hash_pandas_object(df, index=False).astype(str)
     return df
