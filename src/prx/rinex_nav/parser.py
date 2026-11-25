@@ -21,8 +21,9 @@ logger = logging.getLogger(__name__)
 
 CONSTELLATIONS = ["G", "E", "C", "R", "I", "J", "S"]
 
-RECORD_FIELDS = [
-    ["A1,I2.2", "1XI4", 5*"1X,I2.2", 3*"D19.12"]  # SV / EPOCH / SV CLK row
+RECORD_SCHEMA = [
+    ["A1,I2.2", "1XI4", *(5*["1X,I2.2"]), *(3*["D19.12"])],  # SV / EPOCH / SV CLK row
+    *(7*[["4x", *(4*["4D19.12"])]])  # BROADCAST ORBIT - 1 row to BROADCAST ORBIT - 7 row
 ]
 
 def convert_nav_dataset_to_dataframe(nav_ds):
@@ -162,13 +163,14 @@ def parse_records(rinex_nav_file_path: Path) -> pl.DataFrame:
     # Split into fields, these are the same for all constellations, although
     # they can mean different things
     df = df.with_columns(
-        ""
-        pl.col("0").str.split(0,1).alias("system"),
-        pl.col("0").str.split(1,2).alias("prn"),
-        pl.col("0").str.split(3,4).alias("year"),
-        pl.col("0").str.split(9,2).alias("month"),
-        pl.col("0").str.split(9,2).alias("month"),
-
+        pl.col("0").str.slice(0,1).cast(pl.Categorical).alias("constellation"),
+        pl.col("0").str.slice(1,2).cast(int).alias("prn"),
+        pl.col("0").str.slice(4,4).cast(int).alias("year"),
+        pl.col("0").str.slice(9,2).cast(int).alias("month"),
+        pl.col("0").str.slice(12,2).cast(int).alias("day"),
+        pl.col("0").str.slice(15,2).cast(int).alias("hour"),
+        pl.col("0").str.slice(18,2).cast(int).alias("minute"),
+        pl.col("0").str.slice(21,2).cast(int).alias("second"),
     )
     return df
 
